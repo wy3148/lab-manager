@@ -58,22 +58,21 @@ func NewJupyterDocker(uid string) (*Jupyter, error) {
 		panic(err)
 	}
 
-	newPort := jp.getPort() + "/tcp"
-	util.Log.Notice("using new port %s", newPort)
-
+	newPort := jp.getPort()
+	util.Log.Notice("using new port on host:%s", newPort)
 	config := &container.Config{
 		Image: "jupyter/scipy-notebook:2c80cf3537ca",
 		ExposedPorts: nat.PortSet{
-			nat.Port(newPort): struct{}{},
+			nat.Port("8888/tcp"): struct{}{},
 		},
 	}
 
 	hostConfig := &container.HostConfig{
 		PortBindings: nat.PortMap{
-			"4140/tcp": []nat.PortBinding{
+			nat.Port(newPort + "/tcp"): []nat.PortBinding{
 				{
 					HostIP:   "0.0.0.0",
-					HostPort: "4140",
+					HostPort: newPort,
 				},
 			},
 		},
