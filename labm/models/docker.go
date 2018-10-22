@@ -47,7 +47,7 @@ func NewJupyterDocker(uid string) (*Jupyter, error) {
 	//we don't very this uid exist or not in aiqinet.cn
 	pyter, err := dbInst.Get(uid)
 	if err == nil && len(pyter) > 0 {
-		util.Log.Warning("user %s is having a running instance %s", uid, pyter)
+		util.Log.Warning("user %s is already having a running instance %s", uid, pyter)
 		return nil, fmt.Errorf("user %s is having a running instance %s", uid, pyter)
 	}
 

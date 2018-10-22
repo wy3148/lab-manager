@@ -8,18 +8,10 @@
 package routers
 
 import (
-	"lab-manager/labm/controllers"
-
 	"github.com/astaxie/beego"
+	"lab-manager/labm/controllers"
 )
 
 func init() {
-	ns := beego.NewNamespace("/v1",
-		beego.NSNamespace("/lab",
-			beego.NSInclude(
-				&controllers.DockerController{},
-			),
-		),
-	)
-	beego.AddNamespace(ns)
+	beego.Router("/lab", &controllers.DockerController{})
 }

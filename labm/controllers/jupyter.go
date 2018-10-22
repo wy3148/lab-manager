@@ -11,7 +11,7 @@ type DockerController struct {
 }
 
 func (d *DockerController) Post() {
-	uid := d.GetString(":uid")
+	uid := d.GetString("user")
 	if len(uid) == 0 {
 		util.Log.Error("Empty user id")
 	}
@@ -28,7 +28,7 @@ func (d *DockerController) Post() {
 }
 
 func (d *DockerController) Get() {
-	uid := d.GetString(":uid")
+	uid := d.GetString("user")
 	ex := func() {
 		d.Ctx.ResponseWriter.Status = 500
 		d.Ctx.ResponseWriter.Write([]byte("internal error"))
