@@ -1,0 +1,6 @@
+package: ""
+import:
+- package: github.com/docker/go-connections
+  version: v0.4.0
+  subpackages:
+  - nat
