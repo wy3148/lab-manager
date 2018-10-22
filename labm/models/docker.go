@@ -3,8 +3,8 @@ package models
 import (
 	"fmt"
 	"github.com/docker/go-connections/nat"
-	"lab-manager/labm/db"
-	"lab-manager/labm/util"
+	"github.com/wy3148/lab-manager/labm/db"
+	"github.com/wy3148/lab-manager/labm/util"
 	"os"
 
 	"github.com/docker/docker/api/types"

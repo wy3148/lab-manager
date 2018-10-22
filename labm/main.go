@@ -1,7 +1,7 @@
 package main
 
 import (
-	_ "lab-manager/labm/routers"
+	_ "github.com/wy3148/lab-manager/labm/routers"
 
 	"github.com/astaxie/beego"
 )

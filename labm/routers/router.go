@@ -9,7 +9,7 @@ package routers
 
 import (
 	"github.com/astaxie/beego"
-	"lab-manager/labm/controllers"
+	"github.com/wy3148/lab-manager/labm/controllers"
 )
 
 func init() {

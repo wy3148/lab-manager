@@ -2,8 +2,8 @@ package controllers
 
 import (
 	"github.com/astaxie/beego"
-	"lab-manager/labm/models"
-	"lab-manager/labm/util"
+	"github.com/wy3148/lab-manager/labm/models"
+	"github.com/wy3148/lab-manager/labm/util"
 )
 
 type DockerController struct {
