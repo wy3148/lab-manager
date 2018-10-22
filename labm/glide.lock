@@ -30,7 +30,7 @@ imports:
   - digestset
   - reference
 - name: github.com/docker/docker
-  version: f7e5154f37a45dc2e576abbef404f3032e9823bf
+  version: docs-v1.12.1-2016-08-12
   subpackages:
   - api
   - api/types
