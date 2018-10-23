@@ -22,9 +22,10 @@ func (d *DockerController) Post() {
 		d.Ctx.ResponseWriter.Write([]byte("internal error"))
 		return
 	}
+	d.Redirect(j.Url, 301)
 
-	d.Data["json"] = j
-	d.ServeJSON()
+	// d.Data["json"] = j
+	// d.ServeJSON()
 }
 
 func (d *DockerController) Get() {
@@ -46,6 +47,8 @@ func (d *DockerController) Get() {
 		return
 	}
 
-	d.Data["json"] = j
-	d.ServeJSON()
+	d.Redirect(j.Url, 301)
+
+	// d.Data["json"] = j
+	// d.ServeJSON()
 }

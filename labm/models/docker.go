@@ -55,11 +55,12 @@ func (j *jupyManager) getPort() string {
 // NewJupyterDocker
 func NewJupyterDocker(uid string) (*Jupyter, error) {
 	//we don't very this uid exist or not in aiqinet.cn
-
 	user, err := redisDb.GetMap("jp:" + uid)
 	if err == nil && len(user) > 0 {
 		util.Log.Warning("user %s is already having a running instance %s", uid, user["docker"])
-		return nil, fmt.Errorf("user %s is having a running instance %s", uid, user["docker"])
+		return &Jupyter{
+			Url: user["url"],
+		}, nil
 	}
 
 	//create a real docker instance, also get token
@@ -100,18 +101,6 @@ func NewJupyterDocker(uid string) (*Jupyter, error) {
 		panic(err)
 	}
 
-	//wait until something happens, or 5 second timeout
-	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-	tc := time.Tick(1 * time.Second)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			panic(err)
-		}
-	case <-statusCh:
-	case <-tc:
-	}
-
 	i, err := cli.ContainerLogs(context.Background(), resp.ID, types.ContainerLogsOptions{
 		ShowStderr: true,
 		ShowStdout: true,
@@ -135,6 +124,7 @@ func NewJupyterDocker(uid string) (*Jupyter, error) {
 			dockerInst := map[string]string{
 				"docker": "jplabtesting_" + uid,
 				"since":  strconv.FormatInt(time.Now().Unix(), 10),
+				"url":    "http://138.197.221.253:" + newPort + "/?token=" + res[1],
 			}
 			redisDb.StoreMap("jp:"+uid, dockerInst)
 			util.Log.Debug("got container token value: %s", res[1])
