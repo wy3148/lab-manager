@@ -124,12 +124,12 @@ func NewJupyterDocker(uid string) (*Jupyter, error) {
 			dockerInst := map[string]string{
 				"docker": "jplabtesting_" + uid,
 				"since":  strconv.FormatInt(time.Now().Unix(), 10),
-				"url":    "http://138.197.221.253:" + newPort + "/?token=" + res[1],
+				"url":    "http://www.aqinet.com:" + newPort + "/?token=" + res[1],
 			}
 			redisDb.StoreMap("jp:"+uid, dockerInst)
 			util.Log.Debug("got container token value: %s", res[1])
 			return &Jupyter{
-				Url: "http://138.197.221.253:" + newPort + "/?token=" + res[1],
+				Url: "http://www.aqinet.com:" + newPort + "/?token=" + res[1],
 			}, nil
 		}
 	}
