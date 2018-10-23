@@ -2,7 +2,6 @@ package models
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -119,35 +118,19 @@ func NewJupyterDocker(uid string) (*Jupyter, error) {
 		ShowStdout: true,
 		Timestamps: false,
 		Follow:     true,
-		Tail:       "1",
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	hdr := make([]byte, 8)
 	for {
-		var w = &bytes.Buffer{}
-		_, err := i.Read(hdr)
-		if err != nil {
-			log.Fatal(err)
-			return nil, err
-		}
-		count := binary.BigEndian.Uint32(hdr[4:])
-		if count == 0 {
-			return nil, fmt.Errorf("Failed to get container token")
-		}
-
-		dat := make([]byte, count)
+		dat := make([]byte, 4096)
 		_, err = i.Read(dat)
 		if err != nil {
 			log.Fatal(err)
 			return nil, err
 		}
-
-		fmt.Fprint(w, string(dat))
-		fmt.Println(w.String())
-		res := tokenMatch.FindStringSubmatch(w.String())
+		res := tokenMatch.FindStringSubmatch(string(dat))
 		if len(res) == 2 {
 			util.Log.Debug("New docker conainer %s running successfully", "jplabtesting_"+uid)
 			dockerInst := map[string]string{
