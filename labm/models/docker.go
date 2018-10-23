@@ -1,7 +1,6 @@
 package models
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
