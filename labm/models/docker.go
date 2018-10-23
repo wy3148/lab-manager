@@ -1,21 +1,24 @@
 package models
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
-	"github.com/docker/go-connections/nat"
-	"github.com/wy3148/lab-manager/labm/db"
-	"github.com/wy3148/lab-manager/labm/util"
-	"os"
-
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
-
+	"github.com/docker/go-connections/nat"
+	"github.com/wy3148/lab-manager/labm/db"
+	"github.com/wy3148/lab-manager/labm/util"
 	"golang.org/x/net/context"
+	"log"
+	"regexp"
 	"strconv"
 	"sync"
+	"time"
 )
+
+var tokenMatch *regexp.Regexp
 
 type Jupyter struct {
 	Url string `json:"url"`
@@ -26,29 +29,39 @@ type jupyManager struct {
 	port int
 }
 
-var dbInst db.Store
+var redisDb *db.RedisCli
 var jp *jupyManager
 
 func init() {
-	dbInst = db.NewDb()
+	tokenMatch, _ = regexp.Compile(`.+token=(\w+)`)
+	redisDb = db.NewRedisClient()
 	jp = &jupyManager{}
 	jp.port = 10000
+	v, err := redisDb.Do("GET", "PORT")
+	if err == nil && v != nil {
+		port, err := strconv.Atoi(v.(string))
+		if err == nil {
+			jp.port = port
+		}
+	}
 }
 
 func (j *jupyManager) getPort() string {
 	j.Lock()
 	defer j.Unlock()
 	j.port++
+	redisDb.Do("SET", "PORT", strconv.Itoa(j.port))
 	return strconv.Itoa(j.port)
 }
 
 // NewJupyterDocker
 func NewJupyterDocker(uid string) (*Jupyter, error) {
 	//we don't very this uid exist or not in aiqinet.cn
-	pyter, err := dbInst.Get(uid)
-	if err == nil && len(pyter) > 0 {
-		util.Log.Warning("user %s is already having a running instance %s", uid, pyter)
-		return nil, fmt.Errorf("user %s is having a running instance %s", uid, pyter)
+
+	user, err := redisDb.GetMap("jp:" + uid)
+	if err == nil && len(user) > 0 {
+		util.Log.Warning("user %s is already having a running instance %s", uid, user["docker"])
+		return nil, fmt.Errorf("user %s is having a running instance %s", uid, user["docker"])
 	}
 
 	//create a real docker instance, also get token
@@ -69,16 +82,18 @@ func NewJupyterDocker(uid string) (*Jupyter, error) {
 
 	hostConfig := &container.HostConfig{
 		PortBindings: nat.PortMap{
-			nat.Port(newPort + "/tcp"): []nat.PortBinding{
+			nat.Port("8888/tcp"): []nat.PortBinding{
 				{
 					HostIP:   "0.0.0.0",
 					HostPort: newPort,
 				},
 			},
 		},
+		PublishAllPorts: true,
+		Privileged:      false,
 	}
 
-	resp, err := cli.ContainerCreate(ctx, config, hostConfig, nil, "")
+	resp, err := cli.ContainerCreate(ctx, config, hostConfig, nil, "jplabtesting_"+uid)
 	if err != nil {
 		panic(err)
 	}
@@ -87,21 +102,64 @@ func NewJupyterDocker(uid string) (*Jupyter, error) {
 		panic(err)
 	}
 
+	//wait until something happens, or 5 second timeout
 	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	tc := time.Tick(1 * time.Second)
 	select {
 	case err := <-errCh:
 		if err != nil {
 			panic(err)
 		}
 	case <-statusCh:
+	case <-tc:
 	}
 
-	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true})
+	i, err := cli.ContainerLogs(context.Background(), resp.ID, types.ContainerLogsOptions{
+		ShowStderr: true,
+		ShowStdout: true,
+		Timestamps: false,
+		Follow:     true,
+		Tail:       "1",
+	})
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
-	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+	hdr := make([]byte, 8)
+	for {
+		var w = &bytes.Buffer{}
+		_, err := i.Read(hdr)
+		if err != nil {
+			log.Fatal(err)
+			return nil, err
+		}
+		count := binary.BigEndian.Uint32(hdr[4:])
+		if count == 0 {
+			return nil, fmt.Errorf("Failed to get container token")
+		}
 
-	return nil, nil
+		dat := make([]byte, count)
+		_, err = i.Read(dat)
+		if err != nil {
+			log.Fatal(err)
+			return nil, err
+		}
+
+		fmt.Fprint(w, string(dat))
+		fmt.Println(w.String())
+		res := tokenMatch.FindStringSubmatch(w.String())
+		if len(res) == 2 {
+			util.Log.Debug("New docker conainer %s running successfully", "jplabtesting_"+uid)
+			dockerInst := map[string]string{
+				"docker": "jplabtesting_" + uid,
+				"since":  strconv.FormatInt(time.Now().Unix(), 10),
+			}
+			redisDb.StoreMap("jp:"+uid, dockerInst)
+			util.Log.Debug("got container token value: %s", res[1])
+			return &Jupyter{
+				Url: "http://138.197.221.253:" + newPort + "/?token=" + res[1],
+			}, nil
+		}
+	}
+	return nil, fmt.Errorf("Failed to get lab resource")
 }
