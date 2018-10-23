@@ -39,7 +39,7 @@ func init() {
 	jp.port = 10000
 	v, err := redisDb.Do("GET", "PORT")
 	if err == nil && v != nil {
-		port, err := strconv.Atoi(v.(string))
+		port, err := strconv.Atoi(string(v.([]byte)))
 		if err == nil {
 			jp.port = port
 		}
